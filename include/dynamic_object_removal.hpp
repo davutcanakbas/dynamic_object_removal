@@ -35,13 +35,15 @@ public:
                 const std::shared_ptr<const autoware_auto_perception_msgs::msg::DetectedObjects>& obj_msg);
 
   // Function to remove objects using CropBox
-  void objectRemoveCropBox(PointCloudXYZI::Ptr crop_cloud, const Eigen::Vector4f min_point,
+  void objectRemoveCropBox(pcl::PCLPointCloud2::Ptr crop_cloud, const Eigen::Vector4f min_point,
                            const Eigen::Vector4f max_point, const Eigen::Vector3f translation, double orientation_yaw);
 
 private:
   // Subscribers for point cloud and detected objects
   message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pcl_sub_;
   message_filters::Subscriber<autoware_auto_perception_msgs::msg::DetectedObjects> obj_sub_;
+
+  pcl::CropBox<pcl::PCLPointCloud2> ObjectRemoveCrop;
 
   // Synchronizer for the above subscribers
   std::shared_ptr<message_filters::Synchronizer<message_filters::sync_policies::ApproximateTime<

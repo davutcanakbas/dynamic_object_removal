@@ -23,8 +23,11 @@ void DynamicObjectRemoval::callback(
     const std::shared_ptr<const autoware_auto_perception_msgs::msg::DetectedObjects>& obj_msg)
 {
   // Convert ROS2 PointCloud2 to PCL PointCloud
-  PointCloudXYZI::Ptr cloud(new PointCloudXYZI);
-  pcl::fromROSMsg(*pcl_msg, *cloud);
+  std::shared_ptr<sensor_msgs::msg::PointCloud2> pointcloud2_msg (new sensor_msgs::msg::PointCloud2);
+  *pointcloud2_msg = *pcl_msg;
+
+  pcl::PCLPointCloud2::Ptr pcl_pointcloud( new pcl::PCLPointCloud2 );
+  pcl_conversions::moveToPCL( *pointcloud2_msg, *pcl_pointcloud );
 
   // Loop through detected objects
   for (const auto& detected_obj : obj_msg->objects)
@@ -45,23 +48,19 @@ void DynamicObjectRemoval::callback(
     max_point << abs(object_dimension.x) / 2 + 0.25, abs(object_dimension.y) / 2 + 0.25, abs(object_dimension.z) / 2 + 0.25, 1.0;
 
     // Remove object using objectRemoveCropBox function
-    objectRemoveCropBox(cloud, min_point, max_point, detected_obj_pose.translation().cast<float>(), yaw);
+    objectRemoveCropBox(pcl_pointcloud, min_point, max_point, detected_obj_pose.translation().cast<float>(), yaw);
   }
 
   // Convert back to ROS2 PointCloud2 and publish
-  sensor_msgs::msg::PointCloud2 output_msg;
-  pcl::toROSMsg(*cloud, output_msg);
-  pcl_publisher_->publish(output_msg);
+pcl_conversions::fromPCL( *pcl_pointcloud, *pointcloud2_msg );  
+pcl_publisher_->publish(*pointcloud2_msg);
 }
 
 // Function to remove objects using CropBox
-void DynamicObjectRemoval::objectRemoveCropBox(PointCloudXYZI::Ptr crop_cloud, const Eigen::Vector4f min_point,
+void DynamicObjectRemoval::objectRemoveCropBox(pcl::PCLPointCloud2::Ptr crop_cloud, const Eigen::Vector4f min_point,
                                                const Eigen::Vector4f max_point, const Eigen::Vector3f translation,
                                                double orientation_yaw)
 {
-  PointCloudXYZI xyz_filtered_cloud;
-  pcl::CropBox<pcl::PointXYZI> ObjectRemoveCrop;
-
   ObjectRemoveCrop.setNegative(true);
   ObjectRemoveCrop.setInputCloud(crop_cloud);
   ObjectRemoveCrop.setMin(min_point);
